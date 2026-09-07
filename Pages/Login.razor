@@ -1,0 +1,118 @@
+@page "/"
+@page "/login"
+@inject NavigationManager Navigation
+@inject WioLinkWebApp.Services.WioLinkService WioService
+
+<PageTitle>Login</PageTitle>
+
+<h1>ログイン</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label for="serverType" class="form-label">Wio Link サーバー</label>
+                <InputSelect id="serverType" class="form-select" @bind-Value="serverSelection">
+                    <option value="Japan">日本</option>
+                    <option value="Custom">カスタム</option>
+                </InputSelect>
+            </div>
+
+            @if (serverSelection == ServerSelection.Custom)
+            {
+                <div class="mb-3">
+                    <label for="serverUrl" class="form-label">カスタム URL</label>
+                    <InputText id="serverUrl" class="form-control" @bind-Value="customServerUrl" placeholder="https://wiolink-dev3.japaneast.cloudapp.azure.com" />
+                    <div class="form-text">例: https://wiolink.seeed.co.jp</div>
+                </div>
+            }
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Eメールアドレス</label>
+                <InputText id="email" class="form-control" @bind-Value="loginModel.Email" />
+                <ValidationMessage For="@(() => loginModel.Email)" />
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">パスワード</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
+                <ValidationMessage For="@(() => loginModel.Password)" />
+            </div>
+            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                ログイン
+            </button>
+        </EditForm>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly string JapanServerUrl = "https://wiolink.seeed.co.jp";
+
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+    private bool isLoading;
+    private ServerSelection serverSelection = ServerSelection.Japan;
+    private string customServerUrl = "";
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var serverUrl = serverSelection == ServerSelection.Japan ? JapanServerUrl : customServerUrl.Trim();
+            if (serverSelection == ServerSelection.Custom)
+            {
+                if (!Uri.TryCreate(serverUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                {
+                    errorMessage = "カスタム URL を正しく入力してください。";
+                    return;
+                }
+            }
+
+            var result = await WioService.LoginAsync(loginModel.Email, loginModel.Password, serverUrl);
+
+            if (result.Success)
+            {
+                Navigation.NavigateTo("/device-list");
+            }
+            else
+            {
+                errorMessage = result.ErrorMessage;
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private enum ServerSelection
+    {
+        Japan,
+        Custom
+    }
+
+}

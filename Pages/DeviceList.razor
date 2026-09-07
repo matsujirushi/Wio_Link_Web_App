@@ -1,0 +1,117 @@
+@page "/device-list"
+@inject WioLinkWebApp.Services.WioLinkService WioService
+@inject NavigationManager Navigation
+
+<PageTitle>Device List</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>デバイス一覧</h1>
+    <button type="button" class="btn btn-outline-primary" @onclick="GoToLogin">ログアウト</button>
+</div>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (devices == null || devices.Count == 0)
+{
+    <p>No devices found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Node SN</th>
+                <th>名前</th>
+                <th>ボード</th>
+                <th>状態</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var device in devices)
+            {
+                <tr>
+                    <td>@device.NodeSn</td>
+                    <td><a href="@GetDeviceResourcesUrl(device)">@device.Name</a></td>
+                    <td>@device.Board</td>
+                    <td>
+                        @if (device.Online)
+                        {
+                            <span class="badge bg-success">Online</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Offline</span>
+                        }
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" href="@GetDeviceConfigWioNodeUrl(device)">設定</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<WioLinkWebApp.Services.WioLinkService.NodeItem>? devices;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!WioService.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadDevicesAsync();
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        var result = await WioService.GetNodesAsync();
+
+        if (result.Unauthorized)
+        {
+            errorMessage = result.ErrorMessage;
+            Navigation.NavigateTo("/login");
+        }
+        else if (!string.IsNullOrEmpty(result.ErrorMessage))
+        {
+            errorMessage = result.ErrorMessage;
+        }
+        else
+        {
+            devices = result.Nodes ?? new List<WioLinkWebApp.Services.WioLinkService.NodeItem>();
+        }
+
+        isLoading = false;
+    }
+
+    private static string GetDeviceConfigWioNodeUrl(WioLinkWebApp.Services.WioLinkService.NodeItem device)
+    {
+        return $"/device-config-wionode/{Uri.EscapeDataString(device.NodeSn)}";
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private static string GetDeviceResourcesUrl(WioLinkWebApp.Services.WioLinkService.NodeItem device)
+    {
+        return $"/device-resources/{Uri.EscapeDataString(device.NodeSn)}";
+    }
+
+}

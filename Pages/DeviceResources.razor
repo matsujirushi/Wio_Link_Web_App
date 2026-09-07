@@ -1,0 +1,92 @@
+@page "/device-resources/{NodeSn}"
+@inject WioLinkWebApp.Services.WioLinkService WioService
+@inject NavigationManager Navigation
+
+<PageTitle>Device Resources</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Device Resources</h1>
+    <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">Back</button>
+</div>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else
+{
+    <iframe class="device-resources-frame" srcdoc="@htmlContent" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+}
+
+@code {
+    [Parameter]
+    public string NodeSn { get; set; } = string.Empty;
+
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? htmlContent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!WioService.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+        htmlContent = null;
+
+        var nodesResult = await WioService.GetNodesAsync();
+
+        if (nodesResult.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(nodesResult.ErrorMessage) || nodesResult.Nodes is null)
+        {
+            errorMessage = nodesResult.ErrorMessage ?? "ノード一覧の取得に失敗しました。";
+            isLoading = false;
+            return;
+        }
+
+        var nodeKey = nodesResult.Nodes.FirstOrDefault(node => node.NodeSn == NodeSn)?.NodeKey;
+        if (string.IsNullOrWhiteSpace(nodeKey))
+        {
+            errorMessage = "指定されたNode SNに対応するデバイスが見つかりませんでした。";
+            isLoading = false;
+            return;
+        }
+
+        var result = await WioService.GetDeviceResourcesAsync(nodeKey);
+
+        if (result.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(result.ErrorMessage))
+        {
+            errorMessage = result.ErrorMessage;
+        }
+        else
+        {
+            htmlContent = result.RawHtml;
+        }
+
+        isLoading = false;
+    }
+
+    private void ReturnToDeviceList()
+    {
+        Navigation.NavigateTo("/device-list");
+    }
+}

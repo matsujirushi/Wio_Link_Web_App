@@ -1,0 +1,432 @@
+@page "/device-config-wionode/{NodeSn}"
+@inject WioLinkWebApp.Services.WioLinkService WioService
+@inject NavigationManager Navigation
+
+<PageTitle>Wio Node</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Wio Node</h1>
+    <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">戻る</button>
+</div>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-header">Groveモジュール</div>
+        <div class="card-body grove-card-body">
+            <p class="text-muted">Groveモジュールを左右のコネクタへドラッグ&ドロップしてください。</p>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-warning">@errorMessage</div>
+            }
+
+            <div class="grove-palette" @ondrop="ReturnToPalette" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
+                <MudStack Row="true" Wrap="Wrap.NoWrap">
+                    @foreach (var module in AvailableModules)
+                    {
+                        <MudPaper Class="grove-module" draggable="true" @ondragstart="() => StartDrag(module.Sku)">
+                            @if (!string.IsNullOrEmpty(module.ImageUrl))
+                            {
+                                <img class="grove-module-thumb grove-module-image" src="@module.ImageUrl" alt="@module.Name" />
+                            }
+                            else
+                            {
+                                <div class="grove-module-thumb">N/A</div>
+                            }
+                            <div class="grove-module-name">@module.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(module.InterfaceType))
+                            {
+                                <div class="grove-module-type">@module.InterfaceType</div>
+                            }
+                        </MudPaper>
+                    }
+                </MudStack>
+            </div>
+
+            <div class="wio-board-stage">
+                <div class="wio-connector" @ondrop="LeftConnector" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
+                    <div class="connector-spec">
+                        <div class="connector-title">左コネクタ</div>
+                        <div class="connector-types">@LeftConnectorInterfaceTypesText</div>
+                    </div>
+                    @if (LeftModule is not null)
+                    {
+                        <div class="connector-item" draggable="true" @ondragstart="() => StartDrag(LeftModule.Sku)">
+                            @if (!string.IsNullOrEmpty(LeftModule.ImageUrl))
+                            {
+                                <img class="grove-module-thumb grove-module-image" src="@LeftModule.ImageUrl" alt="@LeftModule.Name" />
+                            }
+                            else
+                            {
+                                <div class="grove-module-thumb">N/A</div>
+                            }
+                            <div class="grove-module-name">@LeftModule.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(LeftModule.InterfaceType))
+                            {
+                                <div class="grove-module-type">@LeftModule.InterfaceType</div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <img class="wio-board-image" src="images/wio-node.svg" alt="Wio Node" />
+
+                <div class="wio-connector" @ondrop="RightConnector" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
+                    <div class="connector-spec">
+                        <div class="connector-title">右コネクタ</div>
+                        <div class="connector-types">@RightConnectorInterfaceTypesText</div>
+                    </div>
+                    @if (RightModule is not null)
+                    {
+                        <div class="connector-item" draggable="true" @ondragstart="() => StartDrag(RightModule.Sku)">
+                            @if (!string.IsNullOrEmpty(RightModule.ImageUrl))
+                            {
+                                <img class="grove-module-thumb grove-module-image" src="@RightModule.ImageUrl" alt="@RightModule.Name" />
+                            }
+                            else
+                            {
+                                <div class="grove-module-thumb">N/A</div>
+                            }
+                            <div class="grove-module-name">@RightModule.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(RightModule.InterfaceType))
+                            {
+                                <div class="grove-module-type">@RightModule.InterfaceType</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column align-items-end gap-2 mb-4">
+            @if (!string.IsNullOrWhiteSpace(otaStatusMessage))
+            {
+                <div class="text-muted small">@otaStatusMessage</div>
+            }
+            <button type="button" class="btn btn-primary" @onclick="UpdateFirmware" disabled="@isUpdating">@(isUpdating ? "更新中..." : "ファームウェア更新")</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string NodeSn { get; set; } = string.Empty;
+
+    private List<GroveModule> modules = [];
+
+    private static readonly GroveConnectorInterfaceTypeInfo[] LeftConnectorInterfaceTypes =
+    [
+        new("D0", "GPIO"),
+        new("UART0", "UART"),
+        new("I2C0", "I2C")
+    ];
+
+    private static readonly GroveConnectorInterfaceTypeInfo[] RightConnectorInterfaceTypes =
+    [
+        new("D1", "GPIO"),
+        new("A0", "ANALOG"),
+        new("I2C1", "I2C")
+    ];
+
+    private bool isLoading = true;
+    private bool isUpdating;
+    private string? errorMessage;
+    private string? otaStatusMessage;
+    private const string SupportedBoardName = "Wio Node v1.0";
+    private string? draggingModuleSku;
+    private string? leftConnectorModuleSku;
+    private string? rightConnectorModuleSku;
+    private string? boardName;
+    private string? nodeKey;
+
+    private IEnumerable<GroveModule> AvailableModules => modules;
+    private GroveModule? LeftModule => modules.FirstOrDefault(module => module.Sku == leftConnectorModuleSku);
+    private GroveModule? RightModule => modules.FirstOrDefault(module => module.Sku == rightConnectorModuleSku);
+    private string LeftConnectorInterfaceTypesText => string.Join("/", LeftConnectorInterfaceTypes.Select(item => $"{item.InterfaceType}"));
+    private string RightConnectorInterfaceTypesText => string.Join("/", RightConnectorInterfaceTypes.Select(item => $"{item.InterfaceType}"));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!WioService.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+
+        var nodesResult = await WioService.GetNodesAsync();
+
+        if (nodesResult.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(nodesResult.ErrorMessage) || nodesResult.Nodes is null)
+        {
+            modules = [];
+            errorMessage = nodesResult.ErrorMessage ?? "ノード一覧の取得に失敗しました。";
+            isLoading = false;
+            return;
+        }
+
+        var selectedNode = nodesResult.Nodes.FirstOrDefault(node => node.NodeSn == NodeSn);
+        boardName = selectedNode?.Board;
+        nodeKey = selectedNode?.NodeKey;
+        if (!string.Equals(boardName, SupportedBoardName, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(nodeKey))
+        {
+            modules = [];
+            errorMessage = "このページは Wio Node v1.0 のみ対応しています。";
+            isLoading = false;
+            return;
+        }
+
+        var groveResult = await WioService.GetGroveDriversAsync();
+
+        if (groveResult.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(groveResult.ErrorMessage) || groveResult.Drivers is null)
+        {
+            modules = [];
+            errorMessage = groveResult.ErrorMessage ?? "Groveモジュールの取得に失敗しました。";
+            isLoading = false;
+            return;
+        }
+
+        modules = groveResult.Drivers
+            .Select(driver => new GroveModule(
+                driver.Sku,
+                string.IsNullOrWhiteSpace(driver.GroveName) ? driver.Sku : driver.GroveName,
+                driver.ImageUrl,
+                driver.InterfaceType))
+            .ToList();
+
+        leftConnectorModuleSku = null;
+        rightConnectorModuleSku = null;
+        draggingModuleSku = null;
+
+        var configResult = await WioService.GetNodeConfigAsync(nodeKey);
+        if (configResult.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(configResult.ErrorMessage) || configResult.Connections is null)
+        {
+            errorMessage ??= configResult.ErrorMessage ?? "現在の接続情報の取得に失敗しました。";
+        }
+        else
+        {
+            ApplyNodeConfigConnections(configResult.Connections);
+        }
+
+        isLoading = false;
+    }
+
+    private void StartDrag(string moduleId)
+    {
+        draggingModuleSku = moduleId;
+    }
+
+    private void LeftConnector()
+    {
+        AssignToConnector(isLeft: true);
+    }
+
+    private void RightConnector()
+    {
+        AssignToConnector(isLeft: false);
+    }
+
+    private void ReturnToPalette()
+    {
+        if (string.IsNullOrEmpty(draggingModuleSku))
+        {
+            return;
+        }
+
+        if (leftConnectorModuleSku == draggingModuleSku)
+        {
+            leftConnectorModuleSku = null;
+        }
+
+        if (rightConnectorModuleSku == draggingModuleSku)
+        {
+            rightConnectorModuleSku = null;
+        }
+
+        draggingModuleSku = null;
+    }
+
+    private void AssignToConnector(bool isLeft)
+    {
+        if (string.IsNullOrEmpty(draggingModuleSku))
+        {
+            return;
+        }
+
+        var module = modules.FirstOrDefault(module => module.Sku == draggingModuleSku);
+        if (module is null)
+        {
+            draggingModuleSku = null;
+            return;
+        }
+
+        var allowedInterfaceTypes = isLeft ? LeftConnectorInterfaceTypes.Select(item => item.InterfaceType) : RightConnectorInterfaceTypes.Select(item => item.InterfaceType);
+        if (!IsInterfaceTypeAllowed(module.InterfaceType, allowedInterfaceTypes))
+        {
+            errorMessage = $"{module.Name} は {module.InterfaceType} のため {string.Join(" / ", allowedInterfaceTypes)} に接続できません。";
+            draggingModuleSku = null;
+            return;
+        }
+
+        errorMessage = null;
+
+        if (isLeft)
+        {
+            leftConnectorModuleSku = draggingModuleSku;
+        }
+        else
+        {
+            rightConnectorModuleSku = draggingModuleSku;
+        }
+
+        draggingModuleSku = null;
+    }
+
+    private static bool IsInterfaceTypeAllowed(string interfaceType, IEnumerable<string> allowedInterfaceTypes)
+    {
+        return allowedInterfaceTypes.Contains(NormalizeInterfaceType(interfaceType));
+    }
+
+    private static string NormalizeInterfaceType(string interfaceType)
+    {
+        return interfaceType.Trim();
+    }
+
+    private void ApplyNodeConfigConnections(IEnumerable<WioLinkWebApp.Services.WioLinkService.OtaConnectionItem> connections)
+    {
+        leftConnectorModuleSku = null;
+        rightConnectorModuleSku = null;
+
+        foreach (var connection in connections)
+        {
+            if (IsLeftConnectorPort(connection.Port))
+            {
+                leftConnectorModuleSku = connection.Sku;
+            }
+            else if (IsRightConnectorPort(connection.Port))
+            {
+                rightConnectorModuleSku = connection.Sku;
+            }
+        }
+    }
+
+    private static bool IsLeftConnectorPort(string port)
+    {
+        var normalizedPort = NormalizePort(port);
+        return normalizedPort.Equals("left", StringComparison.OrdinalIgnoreCase)
+            || LeftConnectorInterfaceTypes.Any(item => string.Equals(item.GroveConnectorName, normalizedPort, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsRightConnectorPort(string port)
+    {
+        var normalizedPort = NormalizePort(port);
+        return normalizedPort.Equals("right", StringComparison.OrdinalIgnoreCase)
+            || RightConnectorInterfaceTypes.Any(item => string.Equals(item.GroveConnectorName, normalizedPort, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizePort(string port)
+    {
+        return port.Trim();
+    }
+
+    private sealed record GroveConnectorInterfaceTypeInfo(string GroveConnectorName, string InterfaceType);
+
+    private void ReturnToDeviceList()
+    {
+        Navigation.NavigateTo("/device-list");
+    }
+
+    private async Task UpdateFirmware()
+    {
+        if (isUpdating)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(boardName) || string.IsNullOrWhiteSpace(nodeKey))
+        {
+            errorMessage = "ノード情報が取得できませんでした。";
+            return;
+        }
+
+        isUpdating = true;
+        errorMessage = "ファームウェア更新中です...";
+        otaStatusMessage = "OTA更新を開始しています...";
+
+        try
+        {
+            var connections = new List<WioLinkWebApp.Services.WioLinkService.OtaConnectionItem>();
+
+            if (LeftModule is not null)
+            {
+                connections.Add(new WioLinkWebApp.Services.WioLinkService.OtaConnectionItem(GetConnectorName(LeftConnectorInterfaceTypes, LeftModule.InterfaceType), LeftModule.Sku));
+            }
+
+            if (RightModule is not null)
+            {
+                connections.Add(new WioLinkWebApp.Services.WioLinkService.OtaConnectionItem(GetConnectorName(RightConnectorInterfaceTypes, RightModule.InterfaceType), RightModule.Sku));
+            }
+
+            var result = await WioService.TriggerOtaAsync(
+                nodeKey,
+                boardName,
+                connections,
+                status => InvokeAsync(() =>
+                {
+                    otaStatusMessage = status;
+                    StateHasChanged();
+                }));
+
+            if (result.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            if (!result.Success)
+            {
+                errorMessage = result.ErrorMessage ?? "ファームウェア更新に失敗しました。";
+                return;
+            }
+
+            errorMessage = null;
+            otaStatusMessage = "OTA更新が完了しました。";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private static string GetConnectorName(GroveConnectorInterfaceTypeInfo[] connectorTypes, string interfaceType)
+    {
+        var connector = connectorTypes.FirstOrDefault(item => string.Equals(item.InterfaceType, NormalizeInterfaceType(interfaceType), StringComparison.Ordinal));
+        return connector?.GroveConnectorName ?? connectorTypes[0].GroveConnectorName;
+    }
+
+    private sealed record GroveModule(string Sku, string Name, string ImageUrl, string InterfaceType);
+}

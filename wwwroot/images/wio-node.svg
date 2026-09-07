@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="117" height="90" viewBox="0 0 117 90" role="img" aria-label="Wio Board">
+  <path d="M0 0h86l31 27v39l-24 24H24L0 66z" fill="#2f6397"/>
+
+  <rect x="0" y="30" width="20" height="24" fill="#f7f8fb"/>
+  <rect x="8" y="30" width="4" height="24" fill="#2f6397"/>
+
+  <rect x="97" y="30" width="20" height="24" fill="#f7f8fb"/>
+  <rect x="105" y="30" width="4" height="24" fill="#2f6397"/>
+
+  <rect x="43" y="73" width="31" height="13" rx="1" fill="#f7f8fb"/>
+  <rect x="46" y="70" width="3" height="3" fill="#f7f8fb"/>
+  <rect x="52" y="70" width="3" height="3" fill="#f7f8fb"/>
+  <rect x="58" y="70" width="3" height="3" fill="#f7f8fb"/>
+  <rect x="64" y="70" width="3" height="3" fill="#f7f8fb"/>
+
+  <rect x="56" y="39" width="3" height="3" fill="#f7f8fb"/>
+  <rect x="56" y="45" width="3" height="3" fill="#f7f8fb"/>
+  <rect x="56" y="51" width="3" height="3" fill="#f7f8fb"/>
+  <rect x="56" y="57" width="3" height="3" fill="#f7f8fb"/>
+</svg>
