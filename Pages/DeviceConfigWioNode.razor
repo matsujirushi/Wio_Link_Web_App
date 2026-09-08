@@ -15,15 +15,79 @@
 }
 else
 {
+    <div class="device-config-messages mb-3">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-warning">@errorMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(otaStatusMessage))
+        {
+            <div class="text-muted small">@otaStatusMessage</div>
+        }
+    </div>
+
+    <div class="d-flex justify-content-end align-items-center mb-4">
+        <button type="button" class="btn btn-primary" @onclick="UpdateFirmware" disabled="@(isUpdating || !HasConnectorChanges)">@(isUpdating ? "更新中..." : "ファームウェア更新")</button>
+    </div>
+
+    <div class="wio-board-stage mb-4">
+        <div class="wio-connector" @ondrop="LeftConnector" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
+            <div class="connector-spec">
+                <div class="connector-title">左コネクタ</div>
+                <div class="connector-types">@LeftConnectorInterfaceTypesText</div>
+            </div>
+            @if (LeftModule is not null)
+            {
+                <div class="connector-item" draggable="true" @ondragstart="() => StartDrag(LeftModule.Sku)">
+                    @if (!string.IsNullOrEmpty(LeftModule.ImageUrl))
+                    {
+                        <img class="grove-module-thumb grove-module-image" src="@LeftModule.ImageUrl" alt="@LeftModule.Name" />
+                    }
+                    else
+                    {
+                        <div class="grove-module-thumb">N/A</div>
+                    }
+                    <div class="grove-module-name">@LeftModule.Name</div>
+                    @if (!string.IsNullOrWhiteSpace(LeftModule.InterfaceType))
+                    {
+                        <div class="grove-module-type">@LeftModule.InterfaceType</div>
+                    }
+                </div>
+            }
+        </div>
+
+        <img class="wio-board-image" src="images/wio-node.svg" alt="Wio Node" />
+
+        <div class="wio-connector" @ondrop="RightConnector" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
+            <div class="connector-spec">
+                <div class="connector-title">右コネクタ</div>
+                <div class="connector-types">@RightConnectorInterfaceTypesText</div>
+            </div>
+            @if (RightModule is not null)
+            {
+                <div class="connector-item" draggable="true" @ondragstart="() => StartDrag(RightModule.Sku)">
+                    @if (!string.IsNullOrEmpty(RightModule.ImageUrl))
+                    {
+                        <img class="grove-module-thumb grove-module-image" src="@RightModule.ImageUrl" alt="@RightModule.Name" />
+                    }
+                    else
+                    {
+                        <div class="grove-module-thumb">N/A</div>
+                    }
+                    <div class="grove-module-name">@RightModule.Name</div>
+                    @if (!string.IsNullOrWhiteSpace(RightModule.InterfaceType))
+                    {
+                        <div class="grove-module-type">@RightModule.InterfaceType</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
     <div class="card mb-4">
         <div class="card-header">Groveモジュール</div>
         <div class="card-body grove-card-body">
             <p class="text-muted">Groveモジュールを左右のコネクタへドラッグ&ドロップしてください。</p>
-
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-warning">@errorMessage</div>
-            }
 
             <div class="grove-palette" @ondrop="ReturnToPalette" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
                 <MudStack Row="true" Wrap="Wrap.NoWrap">
@@ -47,68 +111,6 @@ else
                     }
                 </MudStack>
             </div>
-
-            <div class="wio-board-stage">
-                <div class="wio-connector" @ondrop="LeftConnector" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
-                    <div class="connector-spec">
-                        <div class="connector-title">左コネクタ</div>
-                        <div class="connector-types">@LeftConnectorInterfaceTypesText</div>
-                    </div>
-                    @if (LeftModule is not null)
-                    {
-                        <div class="connector-item" draggable="true" @ondragstart="() => StartDrag(LeftModule.Sku)">
-                            @if (!string.IsNullOrEmpty(LeftModule.ImageUrl))
-                            {
-                                <img class="grove-module-thumb grove-module-image" src="@LeftModule.ImageUrl" alt="@LeftModule.Name" />
-                            }
-                            else
-                            {
-                                <div class="grove-module-thumb">N/A</div>
-                            }
-                            <div class="grove-module-name">@LeftModule.Name</div>
-                            @if (!string.IsNullOrWhiteSpace(LeftModule.InterfaceType))
-                            {
-                                <div class="grove-module-type">@LeftModule.InterfaceType</div>
-                            }
-                        </div>
-                    }
-                </div>
-
-                <img class="wio-board-image" src="images/wio-node.svg" alt="Wio Node" />
-
-                <div class="wio-connector" @ondrop="RightConnector" @ondrop:preventDefault="true" @ondragover:preventDefault="true">
-                    <div class="connector-spec">
-                        <div class="connector-title">右コネクタ</div>
-                        <div class="connector-types">@RightConnectorInterfaceTypesText</div>
-                    </div>
-                    @if (RightModule is not null)
-                    {
-                        <div class="connector-item" draggable="true" @ondragstart="() => StartDrag(RightModule.Sku)">
-                            @if (!string.IsNullOrEmpty(RightModule.ImageUrl))
-                            {
-                                <img class="grove-module-thumb grove-module-image" src="@RightModule.ImageUrl" alt="@RightModule.Name" />
-                            }
-                            else
-                            {
-                                <div class="grove-module-thumb">N/A</div>
-                            }
-                            <div class="grove-module-name">@RightModule.Name</div>
-                            @if (!string.IsNullOrWhiteSpace(RightModule.InterfaceType))
-                            {
-                                <div class="grove-module-type">@RightModule.InterfaceType</div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="d-flex flex-column align-items-end gap-2 mb-4">
-            @if (!string.IsNullOrWhiteSpace(otaStatusMessage))
-            {
-                <div class="text-muted small">@otaStatusMessage</div>
-            }
-            <button type="button" class="btn btn-primary" @onclick="UpdateFirmware" disabled="@(isUpdating || !HasConnectorChanges)">@(isUpdating ? "更新中..." : "ファームウェア更新")</button>
         </div>
     </div>
 }
@@ -149,7 +151,7 @@ else
     private string deviceName = string.Empty;
 
     private string PageTitleText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
-    private string PageHeadingText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
+    private string PageHeadingText => string.IsNullOrWhiteSpace(deviceName) ? "Wio Node" : $"Wio Node - {deviceName}";
 
     private IEnumerable<GroveModule> AvailableModules => modules;
     private GroveModule? LeftModule => modules.FirstOrDefault(module => module.Sku == leftConnectorModuleSku);
