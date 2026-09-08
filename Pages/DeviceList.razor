@@ -9,6 +9,11 @@
     <button type="button" class="btn btn-outline-primary" @onclick="GoToLogin">ログアウト</button>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(ConnectedServerName))
+{
+    <p class="text-muted mb-3">接続先: @ConnectedServerName</p>
+}
+
 @if (isLoading)
 {
     <p><em>Loading...</em></p>
@@ -60,9 +65,13 @@ else
 }
 
 @code {
+    private const string JapanServerUrl = "https://wiolink.seeed.co.jp";
+
     private List<WioLinkWebApp.Services.WioLinkService.NodeItem>? devices;
     private bool isLoading = true;
     private string? errorMessage;
+
+    private string ConnectedServerName => GetConnectedServerName(WioService.ServerBaseAddress);
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,6 +82,22 @@ else
         }
 
         await LoadDevicesAsync();
+    }
+
+    private static string GetConnectedServerName(string? serverBaseAddress)
+    {
+        if (string.IsNullOrWhiteSpace(serverBaseAddress))
+        {
+            return string.Empty;
+        }
+
+        var normalized = serverBaseAddress.Trim().TrimEnd('/');
+        if (string.Equals(normalized, JapanServerUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            return "日本";
+        }
+
+        return normalized;
     }
 
     private async Task LoadDevicesAsync()
