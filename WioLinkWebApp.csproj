@@ -33,6 +33,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="WioLinkWebApp.Tests\**\*.cs" />
+    <Content Remove="WioLinkWebApp.Tests\**\*" />
+    <EmbeddedResource Remove="WioLinkWebApp.Tests\**\*" />
+    <None Remove="WioLinkWebApp.Tests\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
     <None Include=".github\workflows\deploy-pages.yml" />
   </ItemGroup>
