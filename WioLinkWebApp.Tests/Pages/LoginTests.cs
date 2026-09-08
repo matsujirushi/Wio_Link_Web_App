@@ -76,6 +76,29 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public async Task DeviceConfigWioNode_RenamesDevice()
+    {
+        var handler = new StubWioHttpMessageHandler();
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
+        cut.Find("button.btn-outline-primary").Click();
+        cut.Find("#device-name").Change("Renamed Device");
+
+        await cut.InvokeAsync(() => cut.Find(".modal-footer .btn-primary").Click());
+
+        Assert.Equal("NODE-123", handler.RenamedNodeSn);
+        Assert.Equal("Renamed Device", handler.RenamedNodeName);
+        Assert.Contains("Wio Node - Renamed Device", cut.Markup);
+        Assert.DoesNotContain("id=\"rename-dialog-title\"", cut.Markup);
+    }
+
+    [Fact]
     public void DeviceConfigWioNode_DisablesFirmwareUpdateUntilConnectorChanges()
     {
         Services.AddScoped<IHttpClientFactory, TestWioHttpClientFactory>();
@@ -184,58 +207,82 @@ public class LoginTests : TestContext
     {
         public string NodeConfigConnections { get; set; } = "[]";
         public string OtaStatus { get; set; } = "done";
+        public string? RenamedNodeSn { get; private set; }
+        public string? RenamedNodeName { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var uri = request.RequestUri?.AbsoluteUri ?? string.Empty;
 
+            if (uri.Contains("/v1/nodes/rename"))
+            {
+                var form = await request.Content!.ReadAsStringAsync(cancellationToken);
+                foreach (var pair in form.Split('&', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var parts = pair.Split('=', 2);
+                    var value = parts.Length == 2 ? Uri.UnescapeDataString(parts[1].Replace("+", " ", StringComparison.Ordinal)) : string.Empty;
+                    if (parts[0] == "node_sn")
+                    {
+                        RenamedNodeSn = value;
+                    }
+                    else if (parts[0] == "name")
+                    {
+                        RenamedNodeName = value;
+                    }
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"result\":\"ok\"}", Encoding.UTF8, "application/json")
+                };
+            }
+
             if (uri.Contains("/v1/nodes/list"))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
                         "{\"nodes\":[{\"node_key\":\"NODE_KEY_123\",\"node_sn\":\"NODE-123\",\"name\":\"Test Device\",\"board\":\"Wio Node v1.0\",\"online\":true}]}",
                         Encoding.UTF8,
                         "application/json")
-                });
+                };
             }
 
             if (uri.Contains("/v1/scan/drivers"))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
                         "{\"drivers\":[{\"GroveName\":\"Test GPIO Module\",\"SKU\":\"GROVE-1\",\"ImageURL\":\"\",\"InterfaceType\":\"GPIO\"}]}",
                     Encoding.UTF8,
                     "application/json")
-                });
+                };
             }
 
             if (uri.Contains("/v1/node/config"))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent($"{{\"connections\":{NodeConfigConnections}}}", Encoding.UTF8, "application/json")
-                });
+                };
             }
 
             if (uri.Contains("/v1/ota/trigger"))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("{}", Encoding.UTF8, "application/json")
-                });
+                };
             }
 
             if (uri.Contains("/v1/ota/status"))
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent($"{{\"ota_status\":\"{OtaStatus}\"}}", Encoding.UTF8, "application/json")
-                });
+                };
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
     }
 }

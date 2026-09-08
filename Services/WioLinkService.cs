@@ -98,6 +98,44 @@ public class WioLinkService
         }
     }
 
+    public async Task<(bool Success, string? ErrorMessage, bool Unauthorized)> RenameNodeAsync(string nodeSn, string name)
+    {
+        if (!IsLoggedIn)
+        {
+            return (false, WioLinkServiceMessages.LoginRequired, true);
+        }
+
+        try
+        {
+            var client = CreateWioServerClient();
+            var token = Uri.EscapeDataString(AccessToken!);
+            var response = await client.PostAsync(
+                $"v1/nodes/rename?access_token={token}",
+                new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["node_sn"] = nodeSn,
+                    ["name"] = name
+                }));
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                ClearToken();
+                return (false, WioLinkServiceMessages.AuthenticationFailed, true);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, string.Format(WioLinkServiceMessages.HttpStatusError1, (int)response.StatusCode), false);
+            }
+
+            return (true, null, false);
+        }
+        catch
+        {
+            return (false, WioLinkServiceMessages.ServerConnectionFailed, false);
+        }
+    }
+
     public async Task<(List<GroveDriverItem>? Drivers, string? ErrorMessage, bool Unauthorized)> GetGroveDriversAsync()
     {
         if (!IsLoggedIn)

@@ -6,7 +6,10 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>@PageHeadingText</h1>
-    <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">戻る</button>
+    <div>
+        <button type="button" class="btn btn-outline-primary me-2" @onclick="OpenRenameDialog">名前変更</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">戻る</button>
+    </div>
 </div>
 
 @if (isLoading)
@@ -115,6 +118,33 @@ else
     </div>
 }
 
+@if (isRenameDialogOpen)
+{
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="rename-dialog-title">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="rename-dialog-title">デバイスの名前変更</h2>
+                    <button type="button" class="btn-close" aria-label="閉じる" @onclick="CloseRenameDialog" disabled="@isRenaming"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="device-name" class="form-label">新しい名前</label>
+                    <InputText id="device-name" class="form-control" @bind-Value="renameInput" />
+                    @if (!string.IsNullOrWhiteSpace(renameErrorMessage))
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">@renameErrorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseRenameDialog" disabled="@isRenaming">キャンセル</button>
+                    <button type="button" class="btn btn-primary" @onclick="RenameDeviceAsync" disabled="@(isRenaming || string.IsNullOrWhiteSpace(renameInput))">@(isRenaming ? "変更中..." : "変更")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 @code {
     [Parameter]
     public string NodeSn { get; set; } = string.Empty;
@@ -149,6 +179,10 @@ else
     private string? boardName;
     private string? nodeKey;
     private string deviceName = string.Empty;
+    private bool isRenameDialogOpen;
+    private bool isRenaming;
+    private string renameInput = string.Empty;
+    private string? renameErrorMessage;
 
     private string PageTitleText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
     private string PageHeadingText => string.IsNullOrWhiteSpace(deviceName) ? "Wio Node" : $"Wio Node - {deviceName}";
@@ -360,6 +394,57 @@ else
     private void ReturnToDeviceList()
     {
         Navigation.NavigateTo("device-list");
+    }
+
+    private void OpenRenameDialog()
+    {
+        renameInput = deviceName;
+        renameErrorMessage = null;
+        isRenameDialogOpen = true;
+    }
+
+    private void CloseRenameDialog()
+    {
+        if (!isRenaming)
+        {
+            isRenameDialogOpen = false;
+        }
+    }
+
+    private async Task RenameDeviceAsync()
+    {
+        var newName = renameInput.Trim();
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            renameErrorMessage = "デバイス名を入力してください。";
+            return;
+        }
+
+        isRenaming = true;
+        renameErrorMessage = null;
+
+        try
+        {
+            var result = await WioService.RenameNodeAsync(NodeSn, newName);
+            if (result.Unauthorized)
+            {
+                Navigation.NavigateTo("login");
+                return;
+            }
+
+            if (!result.Success)
+            {
+                renameErrorMessage = result.ErrorMessage ?? "デバイス名の変更に失敗しました。";
+                return;
+            }
+
+            deviceName = newName;
+            isRenameDialogOpen = false;
+        }
+        finally
+        {
+            isRenaming = false;
+        }
     }
 
     private async Task UpdateFirmware()
