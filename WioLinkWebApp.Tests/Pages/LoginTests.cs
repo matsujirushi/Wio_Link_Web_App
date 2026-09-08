@@ -72,7 +72,7 @@ public class LoginTests : TestContext
 
         var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
 
-        Assert.Contains("Wio Node - Test Device", cut.Markup);
+        Assert.Contains("デバイス - Test Device", cut.Markup);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class LoginTests : TestContext
 
         Assert.Equal("NODE-123", handler.RenamedNodeSn);
         Assert.Equal("Renamed Device", handler.RenamedNodeName);
-        Assert.Contains("Wio Node - Renamed Device", cut.Markup);
+        Assert.Contains("デバイス - Renamed Device", cut.Markup);
         Assert.DoesNotContain("id=\"rename-dialog-title\"", cut.Markup);
     }
 
