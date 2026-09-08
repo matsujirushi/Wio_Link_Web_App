@@ -76,6 +76,21 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public void DeviceResources_ShowsSelectedDeviceNameInTitle()
+    {
+        Services.AddScoped<IHttpClientFactory, TestWioHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var cut = RenderComponent<DeviceResources>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
+
+        Assert.Contains("リソース - Test Device", cut.Markup);
+    }
+
+    [Fact]
     public async Task DeviceConfigWioNode_RenamesDevice()
     {
         var handler = new StubWioHttpMessageHandler();
@@ -255,6 +270,14 @@ public class LoginTests : TestContext
                         "{\"drivers\":[{\"GroveName\":\"Test GPIO Module\",\"SKU\":\"GROVE-1\",\"ImageURL\":\"\",\"InterfaceType\":\"GPIO\"}]}",
                     Encoding.UTF8,
                     "application/json")
+                };
+            }
+
+            if (uri.Contains("/v1/node/resources"))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("<html><body>Resource Content</body></html>", Encoding.UTF8, "text/html")
                 };
             }
 
