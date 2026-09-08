@@ -102,6 +102,28 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public void DeviceConfigWioNode_RendersSectionsInRequestedOrder()
+    {
+        Services.AddScoped<IHttpClientFactory, TestWioHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
+        var markup = cut.Markup;
+
+        Assert.True(markup.IndexOf("device-config-messages", StringComparison.Ordinal)
+            < markup.IndexOf("btn-primary", StringComparison.Ordinal));
+        Assert.True(markup.IndexOf("btn-primary", StringComparison.Ordinal)
+            < markup.IndexOf("wio-board-stage", StringComparison.Ordinal));
+        Assert.True(markup.IndexOf("wio-board-stage", StringComparison.Ordinal)
+            < markup.IndexOf("Groveモジュール", StringComparison.Ordinal));
+        Assert.Single(cut.FindAll(".card-header"));
+    }
+
+    [Fact]
     public async Task DeviceConfigWioNode_DisablesButton_WhenOnDeviceConfigMatchesAfterFirmwareUpdate()
     {
         var handler = new StubWioHttpMessageHandler();
