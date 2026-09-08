@@ -7,7 +7,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>@PageHeadingText</h1>
     <div>
-        <button type="button" class="btn btn-outline-primary me-2" @onclick="OpenRenameDialog">名前変更</button>
         <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">戻る</button>
     </div>
 </div>
@@ -29,8 +28,9 @@ else
         }
     </div>
 
-    <div class="d-flex justify-content-end align-items-center mb-4">
+    <div class="d-flex justify-content-start align-items-center mb-4">
         <button type="button" class="btn btn-primary" @onclick="UpdateFirmware" disabled="@(isUpdating || !HasConnectorChanges)">@(isUpdating ? "更新中..." : "ファームウェア更新")</button>
+        <button type="button" class="btn btn-outline-primary ms-2" @onclick="OpenRenameDialog">名前変更</button>
     </div>
 
     <div class="wio-board-stage mb-4">
