@@ -31,6 +31,51 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public void Login_ShowsSignUpButtonInHeader()
+    {
+        Services.AddScoped<IHttpClientFactory, StubHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var cut = RenderComponent<Login>();
+
+        var signUpButton = cut.Find(".d-flex button.btn-outline-primary");
+
+        Assert.Equal("サインアップ", signUpButton.TextContent);
+    }
+
+    [Fact]
+    public void SignUpPage_RendersServerAndCredentialsFields()
+    {
+        Services.AddScoped<IHttpClientFactory, StubHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var cut = RenderComponent<Signup>();
+
+        Assert.Contains("サインアップ", cut.Markup);
+        Assert.Equal("戻る", cut.Find(".d-flex button.btn-outline-primary").TextContent);
+        Assert.Contains("Wio Link サーバー", cut.Markup);
+        Assert.Contains("Eメールアドレス", cut.Markup);
+        Assert.Contains("パスワード", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SignUpAsync_UsesCreateUserEndpoint()
+    {
+        var handler = new StubWioHttpMessageHandler();
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+
+        var result = await service.SignUpAsync("test@example.com", "password", "https://wiolink.seeed.co.jp");
+
+        Assert.True(result.Success);
+        Assert.Equal("https://wiolink.seeed.co.jp/v1/user/create", handler.LastRequestUri);
+        Assert.Equal("application/x-www-form-urlencoded", handler.LastRequestContentType);
+        Assert.Equal("email=test%40example.com&password=password", handler.LastRequestBody);
+    }
+
+    [Fact]
     public void DeviceList_ShowsJapaneseServerName_ForJapanServer()
     {
         Services.AddScoped<IHttpClientFactory, StubHttpClientFactory>();
@@ -224,10 +269,24 @@ public class LoginTests : TestContext
         public string OtaStatus { get; set; } = "done";
         public string? RenamedNodeSn { get; private set; }
         public string? RenamedNodeName { get; private set; }
+        public string? LastRequestUri { get; private set; }
+        public string? LastRequestContentType { get; private set; }
+        public string? LastRequestBody { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var uri = request.RequestUri?.AbsoluteUri ?? string.Empty;
+            LastRequestUri = uri;
+            LastRequestContentType = request.Content?.Headers.ContentType?.MediaType;
+            LastRequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+
+            if (uri.Contains("/v1/user/create"))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"result\":\"ok\"}", Encoding.UTF8, "application/json")
+                };
+            }
 
             if (uri.Contains("/v1/nodes/rename"))
             {

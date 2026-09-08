@@ -65,6 +65,39 @@ public class WioLinkService
         }
     }
 
+    public async Task<(bool Success, string? ErrorMessage)> SignUpAsync(string email, string password, string serverBaseUrl)
+    {
+        ServerBaseAddress = NormalizeServerBaseAddress(serverBaseUrl);
+
+        try
+        {
+            var client = CreateWioServerClient();
+            var response = await client.PostAsync(
+                "v1/user/create",
+                new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["email"] = email,
+                    ["password"] = password
+                }));
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            if (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.Conflict)
+            {
+                return (false, "そのメールアドレスは既に登録されているか、入力内容が正しくありません。");
+            }
+
+            return (false, string.Format(WioLinkServiceMessages.HttpStatusError1, (int)response.StatusCode));
+        }
+        catch
+        {
+            return (false, WioLinkServiceMessages.ServerConnectionFailed);
+        }
+    }
+
     public async Task<(List<NodeItem>? Nodes, string? ErrorMessage, bool Unauthorized)> GetNodesAsync()
     {
         if (!IsLoggedIn)
