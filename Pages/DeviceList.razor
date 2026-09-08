@@ -131,7 +131,8 @@ else
 
     private void GoToLogin()
     {
-        Navigation.NavigateTo("login");
+        WioService.Logout();
+        Navigation.NavigateTo("login", replace: true);
     }
 
     private static string GetDeviceResourcesUrl(WioLinkWebApp.Services.WioLinkService.NodeItem device)

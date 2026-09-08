@@ -27,6 +27,12 @@ public class WioLinkService
         AccessToken = null;
     }
 
+    public void Logout()
+    {
+        AccessToken = null;
+        ServerBaseAddress = null;
+    }
+
     public async Task<(bool Success, string? ErrorMessage)> LoginAsync(string email, string password, string serverBaseUrl)
     {
         ServerBaseAddress = NormalizeServerBaseAddress(serverBaseUrl);

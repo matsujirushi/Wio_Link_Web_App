@@ -106,6 +106,25 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public void DeviceList_Logout_ClearsAuthenticationAndNavigatesToLogin()
+    {
+        Services.AddScoped<IHttpClientFactory, StubHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://example.com/");
+
+        var cut = RenderComponent<DeviceList>();
+
+        cut.Find("button.btn-outline-primary").Click();
+
+        Assert.False(service.IsLoggedIn);
+        Assert.Null(service.ServerBaseAddress);
+        Assert.EndsWith("/login", Services.GetRequiredService<NavigationManager>().Uri);
+    }
+
+    [Fact]
     public void DeviceConfigWioNode_ShowsSelectedDeviceName()
     {
         Services.AddScoped<IHttpClientFactory, TestWioHttpClientFactory>();
