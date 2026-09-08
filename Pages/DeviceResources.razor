@@ -2,11 +2,11 @@
 @inject WioLinkWebApp.Services.WioLinkService WioService
 @inject NavigationManager Navigation
 
-<PageTitle>Device Resources</PageTitle>
+<PageTitle>@PageTitleText</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Device Resources</h1>
-    <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">Back</button>
+    <h1>@PageHeadingText</h1>
+    <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">戻る</button>
 </div>
 
 @if (isLoading)
@@ -29,6 +29,10 @@ else
     private bool isLoading = true;
     private string? errorMessage;
     private string? htmlContent;
+    private string deviceName = string.Empty;
+
+    private string PageTitleText => string.IsNullOrWhiteSpace(deviceName) ? "リソース" : $"リソース - {deviceName}";
+    private string PageHeadingText => PageTitleText;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -41,6 +45,7 @@ else
         isLoading = true;
         errorMessage = null;
         htmlContent = null;
+        deviceName = string.Empty;
 
         var nodesResult = await WioService.GetNodesAsync();
 
@@ -57,7 +62,10 @@ else
             return;
         }
 
-        var nodeKey = nodesResult.Nodes.FirstOrDefault(node => node.NodeSn == NodeSn)?.NodeKey;
+        var selectedNode = nodesResult.Nodes.FirstOrDefault(node => node.NodeSn == NodeSn);
+        deviceName = selectedNode?.Name ?? string.Empty;
+
+        var nodeKey = selectedNode?.NodeKey;
         if (string.IsNullOrWhiteSpace(nodeKey))
         {
             errorMessage = "指定されたNode SNに対応するデバイスが見つかりませんでした。";
