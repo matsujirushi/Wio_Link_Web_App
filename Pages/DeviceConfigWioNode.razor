@@ -185,7 +185,7 @@ else
     private string? renameErrorMessage;
 
     private string PageTitleText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
-    private string PageHeadingText => string.IsNullOrWhiteSpace(deviceName) ? "Wio Node" : $"Wio Node - {deviceName}";
+    private string PageHeadingText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
 
     private IEnumerable<GroveModule> AvailableModules => modules;
     private GroveModule? LeftModule => modules.FirstOrDefault(module => module.Sku == leftConnectorModuleSku);
