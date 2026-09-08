@@ -68,7 +68,7 @@ else
     {
         if (!WioService.IsLoggedIn)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("login");
             return;
         }
 
@@ -85,7 +85,7 @@ else
         if (result.Unauthorized)
         {
             errorMessage = result.ErrorMessage;
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("login");
         }
         else if (!string.IsNullOrEmpty(result.ErrorMessage))
         {
@@ -101,17 +101,17 @@ else
 
     private static string GetDeviceConfigWioNodeUrl(WioLinkWebApp.Services.WioLinkService.NodeItem device)
     {
-        return $"/device-config-wionode/{Uri.EscapeDataString(device.NodeSn)}";
+        return $"device-config-wionode/{Uri.EscapeDataString(device.NodeSn)}";
     }
 
     private void GoToLogin()
     {
-        Navigation.NavigateTo("/login");
+        Navigation.NavigateTo("login");
     }
 
     private static string GetDeviceResourcesUrl(WioLinkWebApp.Services.WioLinkService.NodeItem device)
     {
-        return $"/device-resources/{Uri.EscapeDataString(device.NodeSn)}";
+        return $"device-resources/{Uri.EscapeDataString(device.NodeSn)}";
     }
 
 }

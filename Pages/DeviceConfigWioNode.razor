@@ -154,7 +154,7 @@ else
     {
         if (!WioService.IsLoggedIn)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("login");
             return;
         }
 
@@ -165,7 +165,7 @@ else
 
         if (nodesResult.Unauthorized)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("login");
             return;
         }
 
@@ -192,7 +192,7 @@ else
 
         if (groveResult.Unauthorized)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("login");
             return;
         }
 
@@ -219,7 +219,7 @@ else
         var configResult = await WioService.GetNodeConfigAsync(nodeKey);
         if (configResult.Unauthorized)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("login");
             return;
         }
 
@@ -357,7 +357,7 @@ else
 
     private void ReturnToDeviceList()
     {
-        Navigation.NavigateTo("/device-list");
+        Navigation.NavigateTo("device-list");
     }
 
     private async Task UpdateFirmware()
@@ -403,7 +403,7 @@ else
 
             if (result.Unauthorized)
             {
-                Navigation.NavigateTo("/login");
+                Navigation.NavigateTo("login");
                 return;
             }
 
