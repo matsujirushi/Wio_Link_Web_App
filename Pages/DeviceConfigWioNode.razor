@@ -2,10 +2,10 @@
 @inject WioLinkWebApp.Services.WioLinkService WioService
 @inject NavigationManager Navigation
 
-<PageTitle>Wio Node</PageTitle>
+<PageTitle>@PageTitleText</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Wio Node</h1>
+    <h1>@PageHeadingText</h1>
     <button type="button" class="btn btn-outline-secondary" @onclick="ReturnToDeviceList">戻る</button>
 </div>
 
@@ -143,6 +143,10 @@ else
     private string? rightConnectorModuleSku;
     private string? boardName;
     private string? nodeKey;
+    private string deviceName = string.Empty;
+
+    private string PageTitleText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
+    private string PageHeadingText => string.IsNullOrWhiteSpace(deviceName) ? "デバイス" : $"デバイス - {deviceName}";
 
     private IEnumerable<GroveModule> AvailableModules => modules;
     private GroveModule? LeftModule => modules.FirstOrDefault(module => module.Sku == leftConnectorModuleSku);
@@ -180,6 +184,7 @@ else
         var selectedNode = nodesResult.Nodes.FirstOrDefault(node => node.NodeSn == NodeSn);
         boardName = selectedNode?.Board;
         nodeKey = selectedNode?.NodeKey;
+        deviceName = selectedNode?.Name ?? string.Empty;
         if (!string.Equals(boardName, SupportedBoardName, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(nodeKey))
         {
             modules = [];
