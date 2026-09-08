@@ -226,6 +226,28 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public void DeviceConfigWioNode_RendersFirmwareAndRenameButtonsLeftToRight()
+    {
+        Services.AddScoped<IHttpClientFactory, TestWioHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
+        var buttons = cut.FindAll("button");
+
+        var firmwareButton = buttons.Single(button => button.TextContent.Contains("ファームウェア更新", StringComparison.Ordinal));
+        var renameButton = buttons.Single(button => button.TextContent == "名前変更");
+
+        Assert.Same(firmwareButton.ParentElement, renameButton.ParentElement);
+        Assert.Contains("justify-content-start", firmwareButton.ParentElement!.GetAttribute("class"));
+        Assert.True(firmwareButton.ParentElement!.InnerHtml.IndexOf("ファームウェア更新", StringComparison.Ordinal)
+            < firmwareButton.ParentElement.InnerHtml.IndexOf("名前変更", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task DeviceConfigWioNode_DisablesButton_WhenOnDeviceConfigMatchesAfterFirmwareUpdate()
     {
         var handler = new StubWioHttpMessageHandler();
