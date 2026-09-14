@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using WioLinkWebApp.Pages;
@@ -201,6 +202,29 @@ public class LoginTests : TestContext
         cut.Find(".grove-palette").TriggerEvent("ondrop", new DragEventArgs());
 
         Assert.True(cut.Find("button.btn-primary").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void DeviceConfigWioNode_RemovingOneDuplicateModuleKeepsOtherConnectorAssigned()
+    {
+        var handler = new StubWioHttpMessageHandler
+        {
+            NodeConfigConnections = "[{\"port\":\"D0\",\"sku\":\"GROVE-1\"},{\"port\":\"D1\",\"sku\":\"GROVE-1\"}]"
+        };
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
+
+        cut.FindAll(".connector-item")[0].TriggerEvent("ondragstart", new DragEventArgs());
+        cut.Find(".grove-palette").TriggerEvent("ondrop", new DragEventArgs());
+
+        Assert.Single(cut.FindAll(".connector-item"));
+        Assert.False(cut.Find("button.btn-primary").HasAttribute("disabled"));
     }
 
     [Fact]
