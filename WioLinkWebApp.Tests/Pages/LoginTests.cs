@@ -77,6 +77,21 @@ public class LoginTests : TestContext
     }
 
     [Fact]
+    public void CreateWioServerClient_ThrowsWhenServerBaseAddressIsNotConfigured()
+    {
+        Services.AddScoped<IHttpClientFactory, StubHttpClientFactory>();
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        var method = typeof(WioLinkService).GetMethod("CreateWioServerClient", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        var exception = Assert.Throws<TargetInvocationException>(() => method!.Invoke(service, null));
+
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+        Assert.Equal("Server base address is not configured.", exception.InnerException!.Message);
+    }
+
+    [Fact]
     public void DeviceList_ShowsJapaneseServerName_ForJapanServer()
     {
         Services.AddScoped<IHttpClientFactory, StubHttpClientFactory>();
