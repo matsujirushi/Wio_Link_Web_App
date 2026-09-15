@@ -542,8 +542,14 @@ public class WioLinkService
 
     private HttpClient CreateWioServerClient()
     {
+        var serverBaseAddress = ServerBaseAddress;
+        if (string.IsNullOrWhiteSpace(serverBaseAddress))
+        {
+            throw new InvalidOperationException("Server base address is not configured.");
+        }
+
         var client = httpClientFactory.CreateClient("WioServerApi");
-        client.BaseAddress = new Uri(ServerBaseAddress);
+        client.BaseAddress = new Uri(serverBaseAddress);
         return client;
     }
 
