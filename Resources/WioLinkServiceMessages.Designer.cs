@@ -70,6 +70,15 @@ namespace WioLinkWebApp.Resources {
         }
         
         /// <summary>
+        ///   The device is offline, so the firmware update could not be completed. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string DeviceOfflineDuringFirmwareUpdateFailed {
+            get {
+                return ResourceManager.GetString("DeviceOfflineDuringFirmwareUpdateFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Failed to retrieve the node list ({0}). に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string GetNodesFailedWithStatus1 {

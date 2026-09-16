@@ -352,6 +352,54 @@ public class LoginTests : TestContext
         cut.WaitForAssertion(() => Assert.True(cut.Find("button.btn-primary").HasAttribute("disabled")), TimeSpan.FromSeconds(2));
     }
 
+    [Fact]
+    public async Task TriggerOtaAsync_WhenDeviceIsOffline_ReturnsOfflineErrorMessage()
+    {
+        var handler = new StubWioHttpMessageHandler
+        {
+            OtaTriggerStatusCode = HttpStatusCode.NotFound
+        };
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var result = await service.TriggerOtaAsync(
+            "NODE_KEY_123",
+            "Wio Node v1.0",
+            [new WioLinkService.OtaConnectionItem("D0", "GROVE-1")]);
+
+        Assert.False(result.Success);
+        Assert.Equal("デバイスがオフラインのためファームウェア更新できませんでした。", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task DeviceConfigWioNode_ClearsStatusMessage_WhenFirmwareUpdateFails()
+    {
+        var handler = new StubWioHttpMessageHandler
+        {
+            OtaTriggerStatusCode = HttpStatusCode.NotFound
+        };
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
+
+        cut.Find(".grove-module").TriggerEvent("ondragstart", new DragEventArgs());
+        cut.FindAll(".wio-connector")[0].TriggerEvent("ondrop", new DragEventArgs());
+
+        await cut.InvokeAsync(() => cut.Find("button.btn-primary").Click());
+
+        Assert.Contains("デバイスがオフラインのためファームウェア更新できませんでした。", cut.Markup);
+        Assert.DoesNotContain("OTA更新を開始しています...", cut.Markup);
+    }
+
     private static void SetProperty<T>(T target, string propertyName, object value)
     {
         var property = typeof(T).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -388,6 +436,8 @@ public class LoginTests : TestContext
     {
         public string NodeConfigConnections { get; set; } = "[]";
         public string OtaStatus { get; set; } = "done";
+        public HttpStatusCode OtaTriggerStatusCode { get; set; } = HttpStatusCode.OK;
+        public HttpStatusCode OtaStatusCode { get; set; } = HttpStatusCode.OK;
         public string GroveImageUrl { get; set; } = string.Empty;
         public string? GroveDriversJson { get; set; }
         public string? RenamedNodeSn { get; private set; }
@@ -475,7 +525,7 @@ public class LoginTests : TestContext
 
             if (uri.Contains("/v1/ota/trigger"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(OtaTriggerStatusCode)
                 {
                     Content = new StringContent("{}", Encoding.UTF8, "application/json")
                 };
@@ -483,7 +533,7 @@ public class LoginTests : TestContext
 
             if (uri.Contains("/v1/ota/status"))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(OtaStatusCode)
                 {
                     Content = new StringContent($"{{\"ota_status\":\"{OtaStatus}\"}}", Encoding.UTF8, "application/json")
                 };
