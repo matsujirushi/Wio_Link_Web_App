@@ -309,6 +309,11 @@ public class WioLinkService
                 return (false, WioLinkServiceMessages.AuthenticationFailed, true);
             }
 
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return (false, WioLinkServiceMessages.DeviceOfflineDuringFirmwareUpdateFailed, false);
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 return (false, string.Format(WioLinkServiceMessages.HttpStatusError1, (int)response.StatusCode), false);
@@ -337,6 +342,11 @@ public class WioLinkService
             if (response.StatusCode == HttpStatusCode.Forbidden)
             {
                 return (false, WioLinkServiceMessages.AuthenticationFailed, true);
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return (false, WioLinkServiceMessages.DeviceOfflineDuringFirmwareUpdateFailed, false);
             }
 
             if (!response.IsSuccessStatusCode)
