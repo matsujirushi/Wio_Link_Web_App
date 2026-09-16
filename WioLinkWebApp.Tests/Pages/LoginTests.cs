@@ -194,6 +194,7 @@ public class LoginTests : TestContext
         var cut = RenderComponent<DeviceConfigWioNode>(parameters => parameters.Add(p => p.NodeSn, "NODE-123"));
 
         Assert.Contains("デバイス - Test Device", cut.Markup);
+        Assert.Equal("images/wio-node.png", cut.Find("img.wio-board-image").GetAttribute("src"));
     }
 
     [Fact]
