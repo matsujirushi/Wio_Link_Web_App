@@ -8,7 +8,8 @@ namespace WioLinkWebApp.Services;
 
 public class WioLinkService
 {
-    private const string GroveImagePrefix = "http://bazaar.seeed.cc/";
+    private const string GroveImagePrefix = "https://bazaar.seeed.cc/";
+    private const string ExcludedGroveDriverSku = "71714fec-8911-11e5-af63-feff819cdc9f";
     private readonly IHttpClientFactory httpClientFactory;
 
     public WioLinkService(IHttpClientFactory httpClientFactory)
@@ -192,6 +193,7 @@ public class WioLinkService
             {
                 var result = await response.Content.ReadFromJsonAsync<GroveDriverListResponse>();
                 var drivers = (result?.Drivers ?? new List<GroveDriverItem>())
+                    .Where(driver => !string.Equals(driver.Sku, ExcludedGroveDriverSku, StringComparison.OrdinalIgnoreCase))
                     .Select(driver =>
                     {
                         driver.ImageUrl = ResolveGroveImageUrl(driver.ImageUrl);
@@ -571,7 +573,7 @@ public class WioLinkService
             return string.Empty;
         }
 
-        if (imageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        if (imageUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || imageUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             return imageUrl;
         }
