@@ -76,6 +76,47 @@ public class LoginTests : TestContext
         Assert.Equal("email=test%40example.com&password=password", handler.LastRequestBody);
     }
 
+    [Theory]
+    [InlineData("grove-example-gpio.jpg", "https://bazaar.seeed.cc/grove-example-gpio.jpg")]
+    [InlineData("http://bazaar.seeed.cc/grove-example-gpio.jpg", "https://bazaar.seeed.cc/grove-example-gpio.jpg")]
+    public async Task GetGroveDriversAsync_UsesHttpsForImageUrls(string imageUrl, string expectedImageUrl)
+    {
+        var handler = new StubWioHttpMessageHandler
+        {
+            GroveImageUrl = imageUrl
+        };
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var result = await service.GetGroveDriversAsync();
+
+        Assert.Equal(expectedImageUrl, result.Drivers!.Single().ImageUrl);
+    }
+
+    [Fact]
+    public async Task GetGroveDriversAsync_ExcludesUnsupportedDriver()
+    {
+        var handler = new StubWioHttpMessageHandler
+        {
+            GroveDriversJson = "[{\"GroveName\":\"Supported\",\"SKU\":\"GROVE-1\",\"ImageURL\":\"\",\"InterfaceType\":\"GPIO\"},{\"GroveName\":\"Unsupported\",\"SKU\":\"71714fec-8911-11e5-af63-feff819cdc9f\",\"ImageURL\":\"\",\"InterfaceType\":\"GPIO\"}]"
+        };
+        Services.AddScoped<IHttpClientFactory>(_ => new TestWioHttpClientFactory(handler));
+        Services.AddScoped<WioLinkService>();
+
+        var service = Services.GetRequiredService<WioLinkService>();
+        SetProperty(service, nameof(WioLinkService.AccessToken), "test-token");
+        SetProperty(service, nameof(WioLinkService.ServerBaseAddress), "https://wiolink.seeed.co.jp/");
+
+        var result = await service.GetGroveDriversAsync();
+
+        Assert.Single(result.Drivers!);
+        Assert.Equal("GROVE-1", result.Drivers[0].Sku);
+    }
+
     [Fact]
     public void CreateWioServerClient_ThrowsWhenServerBaseAddressIsNotConfigured()
     {
@@ -347,6 +388,8 @@ public class LoginTests : TestContext
     {
         public string NodeConfigConnections { get; set; } = "[]";
         public string OtaStatus { get; set; } = "done";
+        public string GroveImageUrl { get; set; } = string.Empty;
+        public string? GroveDriversJson { get; set; }
         public string? RenamedNodeSn { get; private set; }
         public string? RenamedNodeName { get; private set; }
         public string? LastRequestUri { get; private set; }
@@ -406,7 +449,9 @@ public class LoginTests : TestContext
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(
-                        "{\"drivers\":[{\"GroveName\":\"Test GPIO Module\",\"SKU\":\"GROVE-1\",\"ImageURL\":\"\",\"InterfaceType\":\"GPIO\"}]}",
+                        GroveDriversJson is null
+                            ? $"{{\"drivers\":[{{\"GroveName\":\"Test GPIO Module\",\"SKU\":\"GROVE-1\",\"ImageURL\":\"{GroveImageUrl}\",\"InterfaceType\":\"GPIO\"}}]}}"
+                            : $"{{\"drivers\":{GroveDriversJson}}}",
                     Encoding.UTF8,
                     "application/json")
                 };
